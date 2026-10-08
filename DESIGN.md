@@ -61,4 +61,11 @@ When the machine is presumed dead the wall shows the recovery steps as an ordere
 checklist — *what* is missed and *in what order* it comes back — with no
 addresses, paths or identifiers. The real runbook lives in the private repo.
 
+## Demo mode
+
+The wall has a scripted ~2 minute demo (▶ DEMO button, `d` key, or `?demo=1`) that walks
+both panels through ALIVE → DEGRADED → ADLER QUIET → UNIT-01 DEAD → keeper silent → recovery
+on compressed timings, with a clear "DEMO" badge. It is pure front-end: it drives the panels
+only, never fetches or sends anything, and touches nothing real. Reset/abort returns to live.
+
 See `docs/` for the wall page and the latest probe snapshot.

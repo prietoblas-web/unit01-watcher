@@ -58,10 +58,10 @@ jobs:
               memory="$(jq -r '.unit01.memory.status // "unknown"' state.json 2>/dev/null || echo unknown)"
               swap="$(jq -r '.unit01.memory.swap_pct // "null"' state.json 2>/dev/null || echo null)"
               # Normalise to our vocabulary; anything unexpected is "unknown".
-              case "$overall" in alive|degraded|agent_down) : ;; *) overall=unknown ;; esac
+              case "$overall" in alive|degraded|adler_down) : ;; *) overall=unknown ;; esac
             else
-              # Machine up but the agent's state is unreachable/503: agent down.
-              overall=agent_down; pulse=down
+              # Machine up but the agent's state is unreachable/503: Adler down.
+              overall=adler_down; pulse=down
             fi
           fi
 
@@ -100,7 +100,7 @@ jobs:
           swap="${{ steps.probe.outputs.swap }}"
           case "$overall" in
             silent)      msg="UNIT-01 watcher: SILENT. Machine unreachable." ;;
-            agent_down)  msg="UNIT-01 watcher: AGENT DOWN. Machine up, agent quiet." ;;
+            adler_down)  msg="UNIT-01 watcher: ADLER QUIET. Machine up, Adler not responding." ;;
             degraded)
               if [ "$memory" = "critical" ]; then
                 msg="UNIT-01 watcher: DEGRADED. Memory pressure critical (swap ${swap}%)."

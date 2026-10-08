@@ -20,6 +20,14 @@
   .levels span b { font-weight: 600; }
   .foot { padding: 1.2vh 2vw; font-size: 1.8vh; opacity: .55; display: flex;
     justify-content: space-between; }
+  #badge { position: fixed; top: 1vh; left: 50%; transform: translateX(-50%);
+    background: #3a3a00; color: #ffe08a; font-size: 1.9vh; letter-spacing: .15em;
+    padding: .4vh 1.4vw; border-radius: 1vh; z-index: 10; }
+  #banner { padding: 1.4vh 6vw; background: #0c2a17; color: #9effc2; font-size: 2.3vh;
+    border-top: 2px solid #2bd46b; }
+  #demobtn { position: fixed; bottom: 1vh; left: 1.2vw; z-index: 10; opacity: .5;
+    background: #222; color: #ddd; border: 1px solid #555; border-radius: .8vh;
+    font-size: 1.8vh; padding: .5vh 1.2vw; }
   #protocol { padding: 2vh 6vw; background: #1a0605; border-top: 2px solid #ff2a1f; }
   #protocol .who { color: #ff6a60; margin-bottom: 1vh; }
   #protocol ol { margin: 0 0 1vh 2.2ch; font-size: 2.3vh; line-height: 1.55; }
@@ -29,6 +37,8 @@
 </style>
 </head>
 <body>
+  <div id="badge" hidden></div>
+  <button id="demobtn">▶ DEMO</button>
   <div class="panels">
     <section class="panel bg-dim" id="unit">
       <div class="who">UNIT-01</div>
@@ -46,6 +56,7 @@
       <ol id="protocol-steps"></ol>
       <div class="sub" id="protocol-note"></div>
     </section>
+    <div id="banner" hidden></div>
   </div>
   <div class="foot">
     <span id="probe-age">—</span>
@@ -55,11 +66,11 @@
   // Public page: reads only the sanitized, same-origin status.json. No address,
   // token or identifier lives here. The live LAN rich view comes in a later pass.
   var UNIT = {
-    alive:     { cls: "bg-green", color: "ok",   label: "ALIVE",      sub: "" },
-    degraded:  { cls: "bg-amber", color: "warn", label: "DEGRADED",   sub: "a channel is deaf or a daily job failed" },
-    agent_down:{ cls: "bg-amber", color: "warn", label: "AGENT QUIET",sub: "machine up, agent not responding" },
-    silent:    { cls: "bg-red",   color: "bad",  label: "SILENT",     sub: "machine unreachable" },
-    unknown:   { cls: "bg-dim",   color: "dim",  label: "…",          sub: "no reading yet" }
+    alive:     { cls: "bg-green", color: "ok",   label: "ALIVE",        sub: "" },
+    degraded:  { cls: "bg-amber", color: "warn", label: "DEGRADED",     sub: "a channel is deaf or a daily job failed" },
+    adler_down:{ cls: "bg-amber", color: "warn", label: "ADLER QUIET",  sub: "machine up, Adler not responding" },
+    silent:    { cls: "bg-red",   color: "bad",  label: "UNIT-01 DEAD", sub: "machine unreachable" },
+    unknown:   { cls: "bg-dim",   color: "dim",  label: "…",            sub: "no reading yet" }
   };
   function lvl(name, v) {
     var c = v === "ok" ? "ok" : v === "down" ? "bad" : v === "failed" ? "bad"
@@ -106,7 +117,80 @@
     }).catch(function () {});
   function showProtocol(on) { document.getElementById("protocol").hidden = !on; }
 
+  function renderKeeper(label, colorCls, sub) {
+    var st = document.getElementById("keeper-state");
+    st.textContent = label; st.className = "state " + colorCls;
+    document.getElementById("keeper-sub").textContent = sub;
+    document.getElementById("keeper").className =
+      "panel " + (colorCls === "bad" ? "bg-red" : colorCls === "ok" ? "bg-green" : "bg-dim");
+  }
+  renderKeeper("—", "dim", "signal pending");  // live placeholder (keeper panel is deferred)
+
+  // ---- Demo mode: a scripted ~2 min walk, fully client-side. It never fetches,
+  // never sends, and touches nothing real — it just drives the two panels. ----
+  function U(overall, extra) {
+    var base = {overall: overall, body: "ok", pulse: "ok", hearing: "ok",
+                voice: "ok", routine: "ok", memory: "normal", swap_pct: 10,
+                probe_ts: Math.floor(Date.now() / 1000)};
+    for (var k in (extra || {})) base[k] = extra[k];
+    return base;
+  }
+  var DEAD = {body: "down", pulse: "unknown", hearing: "unknown", voice: "unknown",
+              routine: "unknown", memory: "unknown", swap_pct: null};
+  var KEEP_OK = ["PRESENT", "ok", "seen moments ago"];
+  var DEMO = [
+    {ms: 12000, badge: "DEMO 1/6 · both alive",      unit: U("alive"),                       keeper: KEEP_OK},
+    {ms: 16000, badge: "DEMO 2/6 · degraded (memory)", unit: U("degraded", {memory: "critical", swap_pct: 94}), keeper: KEEP_OK},
+    {ms: 20000, badge: "DEMO 3/6 · Adler quiet",     unit: U("adler_down", {pulse: "down"}), keeper: KEEP_OK},
+    {ms: 22000, badge: "DEMO 4/6 · UNIT-01 dead",    unit: U("silent", DEAD),                keeper: KEEP_OK},
+    {ms: 20000, badge: "DEMO 5/6 · keeper silent",   unit: U("silent", DEAD),
+     keeper: ["SILENT", "bad", "would alert Anneke & Jared with last location — DEMO, disabled"]},
+    {ms: 22000, badge: "DEMO 6/6 · recovery",        unit: U("alive"), keeper: KEEP_OK,
+     banner: "Down 02:14 to 03:40, missed: newsroom, bulletin — reran, nothing twice"}
+  ];
+  var demoActive = false, demoTimer = null;
+
+  function banner(text) {
+    var b = document.getElementById("banner");
+    if (text) { b.textContent = text; b.hidden = false; } else { b.hidden = true; }
+  }
+  function playFrame(i) {
+    if (!demoActive) return;
+    if (i >= DEMO.length) { stopDemo(); return; }
+    var f = DEMO[i];
+    document.getElementById("badge").textContent = f.badge;
+    banner(f.banner || "");
+    render(f.unit);
+    renderKeeper(f.keeper[0], f.keeper[1], f.keeper[2]);
+    demoTimer = setTimeout(function () { playFrame(i + 1); }, f.ms);
+  }
+  function startDemo() {
+    if (demoActive) return;
+    demoActive = true;
+    document.getElementById("badge").hidden = false;
+    document.getElementById("demobtn").textContent = "■ RESET";
+    playFrame(0);
+  }
+  function stopDemo() {
+    demoActive = false;
+    if (demoTimer) { clearTimeout(demoTimer); demoTimer = null; }
+    document.getElementById("badge").hidden = true;
+    banner("");
+    document.getElementById("demobtn").textContent = "▶ DEMO";
+    renderKeeper("—", "dim", "signal pending");
+    tick();  // snap straight back to the live state
+  }
+  document.getElementById("demobtn").addEventListener("click", function () {
+    demoActive ? stopDemo() : startDemo();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "d" || e.key === "D") startDemo();
+    if (e.key === "Escape" || e.key === "r" || e.key === "R") stopDemo();
+  });
+  if (/[?&]demo=1/.test(location.search)) startDemo();
+
   function tick() {
+    if (demoActive) return;  // the demo owns the screen; never fight it with live data
     fetch("status.json?" + Date.now()).then(function (r) { return r.json(); })
       .then(render)
       .catch(function () {
