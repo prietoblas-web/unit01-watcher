@@ -6,6 +6,8 @@
   "hearing": "unknown",
   "voice": "unknown",
   "routine": "unknown",
+  "memory": "unknown",
+  "swap_pct": null,
   "probe_ts": 0,
   "note": "seed; replaced by the pull probe"
 }

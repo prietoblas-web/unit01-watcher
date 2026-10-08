@@ -42,17 +42,21 @@ jobs:
           if [ "$body_code" = "200" ]; then body=ok; else body=down; fi
 
           pulse=unknown; hearing=unknown; voice=unknown; routine=unknown
+          memory=unknown; swap=null
 
           if [ "$body" = "down" ]; then
             overall=silent            # machine unreachable
           else
             state_code="$(curl -s -m 10 -o state.json -w '%{http_code}' "$STATE_URL" || echo 000)"
             if [ "$state_code" = "200" ]; then
-              overall="$(jq -r '.overall // "unknown"' state.json 2>/dev/null || echo unknown)"
-              pulse="$(jq -r '.pulse.status // "unknown"' state.json 2>/dev/null || echo unknown)"
-              hearing="$(jq -r '.hearing.status // "unknown"' state.json 2>/dev/null || echo unknown)"
-              voice="$(jq -r '.voice.status // "unknown"' state.json 2>/dev/null || echo unknown)"
-              routine="$(jq -r '.routine.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              # The UNIT-01 panel lives under .unit01 (sanitized at the source).
+              overall="$(jq -r '.unit01.overall // "unknown"' state.json 2>/dev/null || echo unknown)"
+              pulse="$(jq -r '.unit01.pulse.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              hearing="$(jq -r '.unit01.hearing.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              voice="$(jq -r '.unit01.voice.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              routine="$(jq -r '.unit01.routine.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              memory="$(jq -r '.unit01.memory.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              swap="$(jq -r '.unit01.memory.swap_pct // "null"' state.json 2>/dev/null || echo null)"
               # The agent may describe itself; normalise to our vocabulary.
               case "$overall" in alive|degraded|adler_down) : ;; *) overall=unknown ;; esac
               [ "$overall" = "adler_down" ] && overall=agent_down
@@ -65,12 +69,14 @@ jobs:
           ts="$(date -u +%s)"
           jq -n --arg o "$overall" --arg b "$body" --arg p "$pulse" \
                 --arg h "$hearing" --arg v "$voice" --arg r "$routine" \
-                --argjson ts "$ts" \
-            '{schema:1, overall:$o, body:$b, pulse:$p, hearing:$h, voice:$v, routine:$r, probe_ts:$ts, source:"pull"}' \
+                --arg m "$memory" --argjson sw "${swap:-null}" --argjson ts "$ts" \
+            '{schema:1, overall:$o, body:$b, pulse:$p, hearing:$h, voice:$v, routine:$r, memory:$m, swap_pct:$sw, probe_ts:$ts, source:"pull"}' \
             > docs/status.json
 
           echo "overall=$overall" >> "$GITHUB_OUTPUT"
           echo "prev=$prev_overall" >> "$GITHUB_OUTPUT"
+          echo "memory=$memory" >> "$GITHUB_OUTPUT"
+          echo "swap=$swap" >> "$GITHUB_OUTPUT"
           rm -f state.json
 
       - name: Commit status if changed
@@ -91,10 +97,17 @@ jobs:
           TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           overall="${{ steps.probe.outputs.overall }}"
+          memory="${{ steps.probe.outputs.memory }}"
+          swap="${{ steps.probe.outputs.swap }}"
           case "$overall" in
             silent)      msg="UNIT-01 watcher: SILENT. Machine unreachable." ;;
             agent_down)  msg="UNIT-01 watcher: AGENT DOWN. Machine up, agent quiet." ;;
-            degraded)    msg="UNIT-01 watcher: DEGRADED. Agent up but a channel is deaf or a daily job failed." ;;
+            degraded)
+              if [ "$memory" = "critical" ]; then
+                msg="UNIT-01 watcher: DEGRADED. Memory pressure critical (swap ${swap}%)."
+              else
+                msg="UNIT-01 watcher: DEGRADED. A channel is deaf or a daily job failed."
+              fi ;;
             alive)       msg="UNIT-01 watcher: recovered. Both alive." ;;
             *)           msg="" ;;
           esac

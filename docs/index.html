@@ -71,9 +71,14 @@
     var st = document.getElementById("unit-state");
     st.textContent = o.label; st.className = "state " + o.color;
     document.getElementById("unit-sub").textContent = o.sub;
+    var mem = s.memory || "unknown";
+    var memText = mem + (s.swap_pct != null ? " (swap " + s.swap_pct + "%)" : "");
+    var memCls = mem === "critical" ? "bad" : mem === "warn" ? "warn"
+               : mem === "normal" ? "ok" : "dim";
     document.getElementById("unit-levels").innerHTML =
       lvl("Body", s.body) + lvl("Pulse", s.pulse) + lvl("Hearing", s.hearing) +
-      lvl("Voice", s.voice) + lvl("Routine", s.routine);
+      lvl("Voice", s.voice) + lvl("Routine", s.routine) +
+      '<span><b>Memory</b> <span class="' + memCls + '">' + memText + '</span></span>';
     var now = Math.floor(Date.now() / 1000);
     var age = s.probe_ts ? now - s.probe_ts : null;
     var ageEl = document.getElementById("probe-age");
