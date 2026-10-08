@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "overall": "unknown",
-  "body": "unknown",
+  "body": "ok",
   "pulse": "unknown",
   "hearing": "unknown",
   "voice": "unknown",
   "routine": "unknown",
   "memory": "unknown",
   "swap_pct": null,
-  "probe_ts": 0,
-  "note": "seed; replaced by the pull probe"
+  "probe_ts": 1791502067,
+  "source": "pull"
 }
