@@ -57,9 +57,8 @@ jobs:
               routine="$(jq -r '.unit01.routine.status // "unknown"' state.json 2>/dev/null || echo unknown)"
               memory="$(jq -r '.unit01.memory.status // "unknown"' state.json 2>/dev/null || echo unknown)"
               swap="$(jq -r '.unit01.memory.swap_pct // "null"' state.json 2>/dev/null || echo null)"
-              # The agent may describe itself; normalise to our vocabulary.
-              case "$overall" in alive|degraded|adler_down) : ;; *) overall=unknown ;; esac
-              [ "$overall" = "adler_down" ] && overall=agent_down
+              # Normalise to our vocabulary; anything unexpected is "unknown".
+              case "$overall" in alive|degraded|agent_down) : ;; *) overall=unknown ;; esac
             else
               # Machine up but the agent's state is unreachable/503: agent down.
               overall=agent_down; pulse=down

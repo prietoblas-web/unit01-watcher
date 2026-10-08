@@ -20,6 +20,9 @@
   .levels span b { font-weight: 600; }
   .foot { padding: 1.2vh 2vw; font-size: 1.8vh; opacity: .55; display: flex;
     justify-content: space-between; }
+  #protocol { padding: 2vh 6vw; background: #1a0605; border-top: 2px solid #ff2a1f; }
+  #protocol .who { color: #ff6a60; margin-bottom: 1vh; }
+  #protocol ol { margin: 0 0 1vh 2.2ch; font-size: 2.3vh; line-height: 1.55; }
   .ok { color: #2bd46b; } .warn { color: #ffb020; } .bad { color: #ff2a1f; } .dim { color: #8c8c8c; }
   .bg-green { background: #0c2a17; } .bg-amber { background: #2e2206; }
   .bg-red { background: #2e0a08; } .bg-dim { background: #141416; }
@@ -37,6 +40,11 @@
       <div class="who">The keeper</div>
       <div class="state dim" id="keeper-state">—</div>
       <div class="sub" id="keeper-sub">signal pending</div>
+    </section>
+    <section id="protocol" hidden>
+      <div class="who" id="protocol-title">Resurrection protocol</div>
+      <ol id="protocol-steps"></ol>
+      <div class="sub" id="protocol-note"></div>
     </section>
   </div>
   <div class="foot">
@@ -85,7 +93,19 @@
     ageEl.textContent = "probe " + ago(age);
     // Scheduled probes can lag; flag a stale probe so a frozen snapshot is obvious.
     ageEl.className = (age !== null && age > 1200) ? "bad" : "";
+    // The runbook appears exactly when UNIT-01 is presumed dead.
+    showProtocol(s.overall === "silent");
   }
+  // The sanitized runbook: loaded once, shown only when UNIT-01 is SILENT.
+  fetch("protocol.json?" + Date.now()).then(function (r) { return r.json(); })
+    .then(function (p) {
+      document.getElementById("protocol-title").textContent = p.title || "Resurrection protocol";
+      document.getElementById("protocol-steps").innerHTML =
+        (p.steps || []).map(function (s) { return "<li>" + s + "</li>"; }).join("");
+      document.getElementById("protocol-note").textContent = p.note || "";
+    }).catch(function () {});
+  function showProtocol(on) { document.getElementById("protocol").hidden = !on; }
+
   function tick() {
     fetch("status.json?" + Date.now()).then(function (r) { return r.json(); })
       .then(render)
@@ -93,6 +113,7 @@
         var st = document.getElementById("unit-state");
         st.textContent = "WATCHER OFFLINE"; st.className = "state bad";
         document.getElementById("unit").className = "panel bg-red";
+        showProtocol(true);
       })
       .finally(function () {
         document.getElementById("refreshed").textContent =

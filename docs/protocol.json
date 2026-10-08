@@ -1,0 +1,11 @@
+{
+  "title": "Resurrection protocol",
+  "steps": [
+    "Confirm power to UNIT-01, then its network.",
+    "Agent quiet but machine up: it restarts the agent itself; wait for the pulse.",
+    "Machine unreachable: power-cycle it (manual), then let services return on boot.",
+    "Rerun any missed daily jobs; each is idempotent and never double-publishes.",
+    "Verify the channels, then confirm with a test message."
+  ],
+  "note": "What was missed and where each backup lives is in the keeper's private runbook."
+}
