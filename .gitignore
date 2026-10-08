@@ -1,0 +1,8 @@
+# Never let a local secret or scratch file into a public repo.
+config.json
+*.local
+*.secret
+*.key
+*.pem
+.env
+.DS_Store

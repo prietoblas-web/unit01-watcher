@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UNIT-01 Watcher</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #0a0a0b; color: #e8e8ea;
+    font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
+  .panels { flex: 1; display: flex; flex-direction: column; }
+  .panel { flex: 1; display: flex; flex-direction: column; justify-content: center;
+    align-items: center; gap: .4rem; transition: background .6s ease; }
+  .panel .who { font-size: 2.2vh; letter-spacing: .35em; opacity: .7; text-transform: uppercase; }
+  .panel .state { font-size: 9vh; font-weight: 700; letter-spacing: .02em; }
+  .panel .sub { font-size: 2.4vh; opacity: .8; }
+  .levels { display: flex; gap: 1.2rem; font-size: 2vh; opacity: .9; margin-top: .6rem; flex-wrap: wrap; justify-content: center; }
+  .levels span b { font-weight: 600; }
+  .foot { padding: 1.2vh 2vw; font-size: 1.8vh; opacity: .55; display: flex;
+    justify-content: space-between; }
+  .ok { color: #2bd46b; } .warn { color: #ffb020; } .bad { color: #ff2a1f; } .dim { color: #8c8c8c; }
+  .bg-green { background: #0c2a17; } .bg-amber { background: #2e2206; }
+  .bg-red { background: #2e0a08; } .bg-dim { background: #141416; }
+</style>
+</head>
+<body>
+  <div class="panels">
+    <section class="panel bg-dim" id="unit">
+      <div class="who">UNIT-01</div>
+      <div class="state dim" id="unit-state">…</div>
+      <div class="sub" id="unit-sub"></div>
+      <div class="levels" id="unit-levels"></div>
+    </section>
+    <section class="panel bg-dim" id="keeper">
+      <div class="who">The keeper</div>
+      <div class="state dim" id="keeper-state">—</div>
+      <div class="sub" id="keeper-sub">signal pending</div>
+    </section>
+  </div>
+  <div class="foot">
+    <span id="probe-age">—</span>
+    <span id="refreshed">—</span>
+  </div>
+<script>
+  // Public page: reads only the sanitized, same-origin status.json. No address,
+  // token or identifier lives here. The live LAN rich view comes in a later pass.
+  var UNIT = {
+    alive:     { cls: "bg-green", color: "ok",   label: "ALIVE",      sub: "" },
+    degraded:  { cls: "bg-amber", color: "warn", label: "DEGRADED",   sub: "a channel is deaf or a daily job failed" },
+    agent_down:{ cls: "bg-amber", color: "warn", label: "AGENT QUIET",sub: "machine up, agent not responding" },
+    silent:    { cls: "bg-red",   color: "bad",  label: "SILENT",     sub: "machine unreachable" },
+    unknown:   { cls: "bg-dim",   color: "dim",  label: "…",          sub: "no reading yet" }
+  };
+  function lvl(name, v) {
+    var c = v === "ok" ? "ok" : v === "down" ? "bad" : v === "failed" ? "bad"
+          : v === "pending" ? "dim" : v === "unknown" ? "dim" : "warn";
+    return '<span><b>' + name + '</b> <span class="' + c + '">' + (v || "—") + '</span></span>';
+  }
+  function ago(sec) {
+    if (!sec || sec < 0) return "—";
+    if (sec < 90) return sec + "s ago";
+    if (sec < 5400) return Math.round(sec / 60) + "m ago";
+    return Math.round(sec / 3600) + "h ago";
+  }
+  function render(s) {
+    var o = UNIT[s.overall] || UNIT.unknown;
+    var p = document.getElementById("unit");
+    p.className = "panel " + o.cls;
+    var st = document.getElementById("unit-state");
+    st.textContent = o.label; st.className = "state " + o.color;
+    document.getElementById("unit-sub").textContent = o.sub;
+    document.getElementById("unit-levels").innerHTML =
+      lvl("Body", s.body) + lvl("Pulse", s.pulse) + lvl("Hearing", s.hearing) +
+      lvl("Voice", s.voice) + lvl("Routine", s.routine);
+    var now = Math.floor(Date.now() / 1000);
+    var age = s.probe_ts ? now - s.probe_ts : null;
+    var ageEl = document.getElementById("probe-age");
+    ageEl.textContent = "probe " + ago(age);
+    // Scheduled probes can lag; flag a stale probe so a frozen snapshot is obvious.
+    ageEl.className = (age !== null && age > 1200) ? "bad" : "";
+  }
+  function tick() {
+    fetch("status.json?" + Date.now()).then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function () {
+        var st = document.getElementById("unit-state");
+        st.textContent = "WATCHER OFFLINE"; st.className = "state bad";
+        document.getElementById("unit").className = "panel bg-red";
+      })
+      .finally(function () {
+        document.getElementById("refreshed").textContent =
+          "refreshed " + new Date().toLocaleTimeString();
+      });
+  }
+  tick();
+  setInterval(tick, 15000);
+</script>
+</body>
+</html>

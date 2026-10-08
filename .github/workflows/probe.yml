@@ -1,0 +1,105 @@
+name: probe
+
+# Secondary, diagnostic probe. Scheduled runs are best-effort and GitHub may
+# delay them under load (often 5-15 min), so the PUSH dead-man check is what
+# makes detection timely; this job adds the "agent down vs machine unreachable"
+# diagnosis, feeds the wall page, and alerts on a change for the worse.
+#
+# All machine addresses and tokens are SECRETS, never committed:
+#   FUNNEL_HEALTH_URL  an always-on public endpoint proving the machine is up (Body)
+#   FUNNEL_STATE_URL   the agent's state JSON (incl. its access token) proving Pulse
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID  the alert channel (keeper only)
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe and classify
+        id: probe
+        env:
+          HEALTH_URL: ${{ secrets.FUNNEL_HEALTH_URL }}
+          STATE_URL: ${{ secrets.FUNNEL_STATE_URL }}
+        run: |
+          set -u
+          prev_overall="$(jq -r '.overall // "unknown"' docs/status.json 2>/dev/null || echo unknown)"
+
+          # Body: is the machine + its public endpoint reachable at all?
+          body_code="$(curl -s -m 10 -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo 000)"
+          if [ "$body_code" = "200" ]; then body=ok; else body=down; fi
+
+          pulse=unknown; hearing=unknown; voice=unknown; routine=unknown
+
+          if [ "$body" = "down" ]; then
+            overall=silent            # machine unreachable
+          else
+            state_code="$(curl -s -m 10 -o state.json -w '%{http_code}' "$STATE_URL" || echo 000)"
+            if [ "$state_code" = "200" ]; then
+              overall="$(jq -r '.overall // "unknown"' state.json 2>/dev/null || echo unknown)"
+              pulse="$(jq -r '.pulse.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              hearing="$(jq -r '.hearing.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              voice="$(jq -r '.voice.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              routine="$(jq -r '.routine.status // "unknown"' state.json 2>/dev/null || echo unknown)"
+              # The agent may describe itself; normalise to our vocabulary.
+              case "$overall" in alive|degraded|adler_down) : ;; *) overall=unknown ;; esac
+              [ "$overall" = "adler_down" ] && overall=agent_down
+            else
+              # Machine up but the agent's state is unreachable/503: agent down.
+              overall=agent_down; pulse=down
+            fi
+          fi
+
+          ts="$(date -u +%s)"
+          jq -n --arg o "$overall" --arg b "$body" --arg p "$pulse" \
+                --arg h "$hearing" --arg v "$voice" --arg r "$routine" \
+                --argjson ts "$ts" \
+            '{schema:1, overall:$o, body:$b, pulse:$p, hearing:$h, voice:$v, routine:$r, probe_ts:$ts, source:"pull"}' \
+            > docs/status.json
+
+          echo "overall=$overall" >> "$GITHUB_OUTPUT"
+          echo "prev=$prev_overall" >> "$GITHUB_OUTPUT"
+          rm -f state.json
+
+      - name: Commit status if changed
+        run: |
+          if git diff --quiet -- docs/status.json; then
+            echo "no change"; exit 0
+          fi
+          git config user.name "unit01-watcher"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/status.json
+          git commit -m "probe: ${{ steps.probe.outputs.overall }} [skip ci]"
+          git push
+
+      - name: Alert on change for the worse
+        if: steps.probe.outputs.overall != steps.probe.outputs.prev
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          overall="${{ steps.probe.outputs.overall }}"
+          case "$overall" in
+            silent)      msg="UNIT-01 watcher: SILENT. Machine unreachable." ;;
+            agent_down)  msg="UNIT-01 watcher: AGENT DOWN. Machine up, agent quiet." ;;
+            degraded)    msg="UNIT-01 watcher: DEGRADED. Agent up but a channel is deaf or a daily job failed." ;;
+            alive)       msg="UNIT-01 watcher: recovered. Both alive." ;;
+            *)           msg="" ;;
+          esac
+          if [ -n "$msg" ] && [ -n "${TG_TOKEN:-}" ] && [ -n "${TG_CHAT:-}" ]; then
+            curl -s -m 15 "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TG_CHAT}" \
+              --data-urlencode "text=${msg}" -o /dev/null || true
+          fi
