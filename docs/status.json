@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "overall": "alive",
+  "overall": "adler_down",
   "body": "ok",
-  "pulse": "ok",
-  "hearing": "ok",
-  "voice": "ok",
-  "routine": "pending",
-  "memory": "normal",
-  "swap_pct": 75,
-  "probe_ts": 1791824169,
+  "pulse": "down",
+  "hearing": "unknown",
+  "voice": "unknown",
+  "routine": "unknown",
+  "memory": "unknown",
+  "swap_pct": null,
+  "probe_ts": 1791848035,
   "source": "pull"
 }
