@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "overall": "degraded",
+  "overall": "alive",
   "body": "ok",
   "pulse": "ok",
   "hearing": "ok",
   "voice": "ok",
-  "routine": "pending",
-  "memory": "critical",
-  "swap_pct": 92,
-  "probe_ts": 1792440270,
+  "routine": "ok",
+  "memory": "normal",
+  "swap_pct": 82,
+  "probe_ts": 1792452925,
   "source": "pull"
 }
