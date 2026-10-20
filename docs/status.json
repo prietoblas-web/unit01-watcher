@@ -6,8 +6,8 @@
   "hearing": "ok",
   "voice": "ok",
   "routine": "pending",
-  "memory": "warn",
-  "swap_pct": 88,
-  "probe_ts": 1792518644,
+  "memory": "normal",
+  "swap_pct": 90,
+  "probe_ts": 1792530092,
   "source": "pull"
 }
