@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "overall": "alive",
-  "body": "ok",
-  "pulse": "ok",
-  "hearing": "ok",
-  "voice": "ok",
-  "routine": "ok",
-  "memory": "normal",
-  "swap_pct": 64,
-  "probe_ts": 1793062079,
+  "overall": "silent",
+  "body": "down",
+  "pulse": "unknown",
+  "hearing": "unknown",
+  "voice": "unknown",
+  "routine": "unknown",
+  "memory": "unknown",
+  "swap_pct": null,
+  "probe_ts": 1793079863,
   "source": "pull"
 }
