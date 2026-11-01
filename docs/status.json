@@ -3,11 +3,11 @@
   "overall": "degraded",
   "body": "ok",
   "pulse": "ok",
-  "hearing": "ok",
+  "hearing": "down",
   "voice": "ok",
   "routine": "failed",
   "memory": "critical",
   "swap_pct": 94,
-  "probe_ts": 1793480701,
+  "probe_ts": 1793491476,
   "source": "pull"
 }
