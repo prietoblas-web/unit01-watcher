@@ -7,7 +7,7 @@
   "voice": "ok",
   "routine": "pending",
   "memory": "normal",
-  "swap_pct": 77,
-  "probe_ts": 1794153975,
+  "swap_pct": 80,
+  "probe_ts": 1794169617,
   "source": "pull"
 }
