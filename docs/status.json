@@ -5,9 +5,9 @@
   "pulse": "ok",
   "hearing": "ok",
   "voice": "ok",
-  "routine": "pending",
+  "routine": "ok",
   "memory": "normal",
-  "swap_pct": 80,
-  "probe_ts": 1795108642,
+  "swap_pct": 71,
+  "probe_ts": 1795131519,
   "source": "pull"
 }
